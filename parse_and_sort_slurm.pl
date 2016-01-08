@@ -16,13 +16,54 @@ my @dat = <>;
 # zero-based Fields #5 and #6 contain times, convert it to seconds to
 # make them comparable
 
-@dat = sort {
-    $b->[4] cmp $a->[4] ||
-	$b->[10] <=> $a->[10]
-} @dat; 
+@dat = sort sort_squeue @dat; 
 
 foreach (@dat) { 
     print join("\t", @{$_}); 
+}
+
+sub sort_squeue
+{
+    my $ret = 0;
+    # compare for status (running < pending)
+    $ret = $b->[4] cmp $a->[4];
+
+    # if we have a value other than 0 we are allowed to return
+    if ($ret)
+    {
+	return $ret;
+    }
+
+    # check if they are running or not? One check is suffienct
+    if ($b->[4] =~ /running/i)
+    {
+	# yes... So calculate the rest of the runtime
+	my $rest_time_b = timestring_to_sec($b->[6])-timestring_to_sec($b->[5]);
+	my $rest_time_a = timestring_to_sec($a->[6])-timestring_to_sec($a->[5]);
+
+	$ret = $rest_time_b <=> $rest_time_a;
+
+	# if we have a value other than 0 we are allowed to return
+	if ($ret)
+	{
+	    return $ret;
+	}
+
+    } else {
+
+	# no... Just sort by priority
+	$ret = $b->[10] <=> $a->[10];
+
+	# if we have a value other than 0 we are allowed to return
+	if ($ret)
+	{
+	    return $ret;
+	}
+
+    }
+
+    # ultimately sort by process number
+    return $a->[0] <=> $b->[0]; 
 }
 
 sub timestring_to_sec
